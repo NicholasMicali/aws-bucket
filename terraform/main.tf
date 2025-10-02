@@ -16,7 +16,7 @@ variable "aws_region" {
 
 # Validation-friendly provider config (no creds needed)
 provider "aws" {
-  region                      = var.aws_region
+  region = var.aws_region
 }
 
 # Minimal resource just for syntax/schema validation
