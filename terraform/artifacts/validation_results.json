@@ -1,0 +1,14 @@
+[
+  {
+    "tool": "terraform_plan",
+    "status": "error",
+    "attempts": 1,
+    "output": "\u274c Terraform plan failed (no plan file was created).\n\nSTDERR:\n\nError: Required plugins are not installed\n\nThe installed provider plugins are not consistent with the packages selected\nin the dependency lock file:\n  - registry.terraform.io/hashicorp/aws: there is no package for registry.terraform.io/hashicorp/aws 5.100.0 cached in .terraform/providers\n\nTerraform uses external plugins to integrate with a variety of different\ninfrastructure services. To download the plugins required for this\nconfiguration, run:\n  terraform init\n\n\nSTDOUT:\n",
+    "timestamp": "2025-10-02T03:49:06.946792",
+    "issues_count": 0,
+    "files_created": [],
+    "notes": {
+      "directory": "aws-bucket"
+    }
+  }
+]

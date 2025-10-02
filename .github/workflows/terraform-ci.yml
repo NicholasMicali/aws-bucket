@@ -1,0 +1,100 @@
+name: Terraform CI
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-ci.yml'
+  push:
+    branches: ['main']
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-ci.yml'
+
+permissions:
+  contents: write   # needed to commit the generated image
+
+concurrency:
+  group: terraform-${ github.ref }
+  cancel-in-progress: true
+
+env:
+  TF_IN_AUTOMATION: 'true'
+  TF_WORKING_DIR: terraform
+  TF_VERSION_PIN: '1.5.7'
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${ env.TF_VERSION_PIN }
+
+      - name: Terraform version
+        run: terraform -version
+
+      - name: Init (no backend)
+        working-directory: ${ env.TF_WORKING_DIR }
+        run: terraform init -backend=false -input=false
+
+      - name: Format check
+        working-directory: ${ env.TF_WORKING_DIR }
+        run: terraform fmt -check -recursive
+
+      - name: Validate
+        working-directory: ${ env.TF_WORKING_DIR }
+        run: terraform validate -no-color
+
+      - name: Plan (emit plan.out)
+        working-directory: ${ env.TF_WORKING_DIR }
+        run: terraform plan -input=false -refresh=false -lock=false -no-color -out=plan.out
+
+      # ---- Inkdrop render & commit (only if plan succeeded) ----
+
+      - name: Render Inkdrop SVG via Docker
+        if: ${ success() }
+        working-directory: ${ env.TF_WORKING_DIR }
+        run: |
+          docker run --rm             -v "$PWD:/tfroot"             -e TF_VERSION=${ env.TF_VERSION_PIN }             inkdroporg/inkdrop:latest             plan.out --ci --debug
+          # Ensure at least one SVG got created in TF root
+          ls -1 *.svg
+
+      - name: Move diagram into images/
+        if: ${ success() }
+        run: |
+          mkdir -p images
+          # pick the first svg emitted by inkdrop inside terraform/ and rename it
+          svg_file="$(ls -1 "${ env.TF_WORKING_DIR }"/*.svg | head -n1)"
+          if [ -z "$svg_file" ]; then
+            echo "No SVG produced by Inkdrop."; exit 1
+          fi
+          mv -f "$svg_file" images/inkdrop.svg
+          ls -l images/inkdrop.svg
+
+      - name: Commit & push diagram
+        if: ${ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }
+        env:
+          GH_EMAIL: "github-actions[bot]@users.noreply.github.com"
+          GH_NAME: "github-actions[bot]"
+        run: |
+          git config user.email "$GH_EMAIL"
+          git config user.name "$GH_NAME"
+          git add images/inkdrop.svg
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(diagram): update Inkdrop SVG [skip ci]"
+          # push back to PR head branch or current branch on push
+          if [ "${ github.event_name }" = "pull_request" ]; then
+            BRANCH="${ github.event.pull_request.head.ref }"
+          else
+            BRANCH="${ github.ref_name }"
+          fi
+          git push origin "HEAD:${ github.event.pull_request.head.repo.fork == false && github.event.pull_request.head.ref || github.ref_name }"

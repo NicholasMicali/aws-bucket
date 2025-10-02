@@ -1,0 +1,34 @@
+name: Terraform Plan with Inkdrop
+on:
+  pull_request:
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Terraform Init and Plan
+        run: |
+          terraform init
+          terraform plan -out=plan.out
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: plan.out
+
+  visualize:
+    needs: plan
+    uses: inkdrop-org/inkdrop-visualizer/.github/workflows/inkdrop-plan.yml@v2
+    with:
+      terraform_version: 1.5.7
+      plan_artifact: terraform-plan
+      plan_file_name: plan.out
