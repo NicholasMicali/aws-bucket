@@ -27,22 +27,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Dump env & repo structure
+      - name: Dump env & directory
         run: |
-          echo "=== ENV ==="
-          env
           echo "=== ROOT FILES ==="
           ls -lah .
-          echo "=== terraform dir listing ==="
-          ls -lah terraform || echo "terraform dir not found"
+          echo "=== terraform dir ==="
+          ls -lah terraform || echo "terraform missing"
 
-      - name: Digger run (plan/no-backend, verbose)
+      - name: Digger run (plan / no-backend)
         uses: diggerhq/digger@vLatest
         with:
           digger-spec: ${{ toJson(github) }}
           setup-terraform: true
+          terraform-version: 1.5.7
           no-backend: true
-          verbose: true
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check CLI presence
+        run: |
+          if command -v digger; then
+            echo "Digger CLI present"
+            digger version || true
+          else
+            echo "Digger CLI missing"
+            exit 1
+          fi
