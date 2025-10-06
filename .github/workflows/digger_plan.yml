@@ -1,15 +1,9 @@
-name: Digger Plan (debug)
+name: Digger Plan
 
 on:
   pull_request:
-    branches:
-      - main
-    types:
-      - opened
-      - synchronize
-  issue_comment:
-    types:
-      - created
+    branches: [ "main" ]
+    types: [ opened, synchronize ]
   workflow_dispatch:
 
 jobs:
@@ -27,30 +21,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Dump env & directory
+      # (optional) quick visibility
+      - name: Show repo layout
         run: |
-          echo "=== ROOT FILES ==="
           ls -lah .
-          echo "=== terraform dir ==="
-          ls -lah terraform || echo "terraform missing"
+          ls -lah terraform || true
 
-      - name: Digger run (plan / no-backend)
+      - name: Digger run (backendless, plan-only)
         uses: diggerhq/digger@vLatest
         with:
-          digger-spec: ${{ toJson(github) }}
+          # run without orchestrator; parse PR events directly
+          no-backend: true
+
+          # Install Terraform for you (pin if you like)
           setup-terraform: true
           terraform-version: 1.5.7
-          no-backend: true
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check CLI presence
-        run: |
-          if command -v digger; then
-            echo "Digger CLI present"
-            digger version || true
-          else
-            echo "Digger CLI missing"
-            exit 1
-          fi
+          # We’re not setting up any cloud (AWS/GCP/Azure) on purpose
+          # to avoid credential requirements during this POC.
+          # If you later want locks without an orchestrator, re-enable pr_locks
+          # and supply the appropriate cloud setup inputs.
+
+          # Keep default checkout behavior
+          configure-checkout: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_CONTEXT: ${{ toJson(github) }}
