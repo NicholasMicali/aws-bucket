@@ -1,4 +1,4 @@
-name: Digger Plan
+name: Digger Plan (debug)
 
 on:
   pull_request:
@@ -27,12 +27,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Digger run (plan/no-backend)
+      - name: Dump env & repo structure
+        run: |
+          echo "=== ENV ==="
+          env
+          echo "=== ROOT FILES ==="
+          ls -lah .
+          echo "=== terraform dir listing ==="
+          ls -lah terraform || echo "terraform dir not found"
+
+      - name: Digger run (plan/no-backend, verbose)
         uses: diggerhq/digger@vLatest
         with:
           digger-spec: ${{ toJson(github) }}
           setup-terraform: true
           no-backend: true
+          verbose: true
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
