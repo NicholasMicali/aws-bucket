@@ -1,3 +1,5 @@
+pr_locks: false
+
 projects:
   - name: default
     dir: terraform
